@@ -14,7 +14,7 @@ export default async (req) => {
   }
 
   const NOTION_KEY = process.env.NOTION_API_KEY;
-  const NOTION_PAGE_ID = '65089dd5-fd2d-4a4d-8d69-af2c2c5af186';
+  const DATABASE_ID = '65089dd5-fd2d-4a4d-8d69-af2c2c5af186';
 
   if (!NOTION_KEY) {
     return new Response(JSON.stringify({ error: 'Notion key not configured' }), { status: 500, headers });
@@ -36,20 +36,18 @@ export default async (req) => {
     unpredictable: 'unpredictable'
   };
 
-  const makeParagraph = (text) => ({
-    object: 'block',
-    type: 'paragraph',
-    paragraph: { rich_text: [{ type: 'text', text: { content: text } }] }
-  });
+  const properties = {
+    'Session': { title: [{ text: { content: `Session — ${dateStr}` } }] },
+    'Focus': { rich_text: [{ text: { content: focusTask || 'this hour' } }] },
+    'Energy': { select: { name: energyLabels[energy] || energy } },
+    'Intervals': { select: { name: `${intervalsCompleted} / ${totalIntervals}` } },
+    'Time Worked': { number: intervalsCompleted * 10 },
+    'date:Date:start': dateStr,
+  };
 
-  const children = [
-    makeParagraph(`Date: ${dateStr} at ${timeStr}`),
-    makeParagraph(`Focus: ${focusTask || 'this hour'}`),
-    makeParagraph(`Energy: ${energyLabels[energy] || energy}`),
-    makeParagraph(`Intervals completed: ${intervalsCompleted} of ${totalIntervals}`),
-    makeParagraph(`Time worked: ${intervalsCompleted * 10} min`),
-  ];
-  if (note) children.push(makeParagraph(`Notes: ${note}`));
+  if (note) {
+    properties['Notes'] = { rich_text: [{ text: { content: note } }] };
+  }
 
   try {
     const res = await fetch('https://api.notion.com/v1/pages', {
@@ -60,11 +58,8 @@ export default async (req) => {
         'Notion-Version': '2022-06-28',
       },
       body: JSON.stringify({
-        parent: { page_id: NOTION_PAGE_ID },
-        properties: {
-          title: { title: [{ text: { content: `Session — ${dateStr}` } }] }
-        },
-        children
+        parent: { database_id: DATABASE_ID },
+        properties
       })
     });
 
