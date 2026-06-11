@@ -37,7 +37,7 @@ exports.handler = async (event) => {
   };
 
   const properties = {
-    'Session': { title: [{ type: 'text', text: { content: `${new Date(dateStr).toLocaleDateString('en-CA', {month: 'long', day: 'numeric'})} — ${focusTask || 'this hour'}` } }] },
+    'Session': { title: [{ type: 'text', text: { content: focusTask || 'this hour' } }] },
     'Focus': { rich_text: [{ type: 'text', text: { content: focusTask || 'this hour' } }] },
     'Energy': { select: { name: energyLabels[energy] || energy } },
     'Intervals': { select: { name: `${intervalsCompleted} / ${totalIntervals}` } },
