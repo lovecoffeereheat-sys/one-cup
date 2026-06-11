@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>One Cup — Work Session Timer</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Lora:ital,wght@0,400;0,500;1,400&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --rose-deep:#944e63;--rose-mid:#b47b84;--rose-soft:#caa6a6;--rose-pale:#f6e6e3;
+  --navy:#16042d;--navy-light:#3a2050;--navy-mid:#5a3a72;--navy-faint:#9a8aaa;
+  --white:#fffaf9;--border:#e8d4d0;--cream:#f5f0e8;--ink:#2a2118;
+  --coffee:#6b4c35;--coffee-light:#9b7355;--gold:#c9984a;--gold-pale:#f5ead8;
+  --success-bg:rgba(30,100,60,0.08);--success-color:#256038;--success-border:rgba(30,100,60,0.2);
+  --error-bg:rgba(148,78,99,0.08);--error-color:var(--rose-deep);--error-border:rgba(148,78,99,0.2);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Lora',Georgia,serif;background:var(--navy);color:var(--ink);min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:0}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");pointer-events:none;z-index:0;opacity:0.6}
+
+/* ── SETUP OVERLAY ── */
+.setup-overlay{position:fixed;inset:0;background:var(--navy);z-index:200;display:flex;align-items:center;justify-content:center;padding:2rem}
+.setup-overlay.hidden{display:none}
+.setup-box{background:rgba(255,255,255,.05);border:1px solid rgba(245,234,216,.2);border-radius:12px;padding:2.5rem 2rem;max-width:420px;width:100%;text-align:center}
+.setup-eyebrow{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.28em;text-transform:uppercase;color:var(--coffee-light);margin-bottom:.5rem}
+.setup-title{font-family:'Playfair Display',serif;font-size:1.5rem;color:var(--gold-pale);margin-bottom:.35rem}
+.setup-title em{color:var(--gold);font-style:italic}
+.setup-sub{font-family:'Lora',serif;font-style:italic;font-size:.82rem;color:rgba(155,115,85,.6);margin-bottom:1.75rem;line-height:1.6}
+.setup-field{margin-bottom:.85rem;text-align:left}
+.setup-field label{display:block;font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.2em;text-transform:uppercase;color:var(--coffee-light);margin-bottom:.35rem}
+.setup-field input{width:100%;background:rgba(245,234,216,.07);border:1px solid rgba(245,234,216,.18);border-radius:5px;padding:.68rem 1rem;font-family:'Lora',serif;font-size:.85rem;color:var(--gold-pale);outline:none;transition:border-color .2s}
+.setup-field input::placeholder{color:rgba(155,115,85,.4);font-style:italic}
+.setup-field input:focus{border-color:rgba(201,152,74,.5)}
+.setup-hint{font-size:.6rem;color:rgba(155,115,85,.4);margin-top:.28rem;font-style:italic}
+.setup-btn{width:100%;background:var(--coffee);color:var(--gold-pale);border:none;border-radius:5px;padding:.82rem 2rem;font-family:'DM Mono',monospace;font-size:.7rem;letter-spacing:.18em;text-transform:uppercase;cursor:pointer;margin-top:1rem;transition:background .2s}
+.setup-btn:hover{background:var(--navy-light)}
+.setup-note{font-size:.6rem;color:rgba(155,115,85,.28);margin-top:.85rem;line-height:1.65}
+
+/* ── APP ── */
+.app{position:relative;z-index:1;width:100%;max-width:580px;padding:40px 28px 80px}
+
+/* ── HEADER ── */
+.header{text-align:center;margin-bottom:36px}
+.cup-wrap{position:relative;width:56px;height:64px;margin:0 auto 20px}
+.steam{position:absolute;bottom:48px;left:50%;transform:translateX(-50%);display:flex;gap:5px}
+.wisp{width:4px;border-radius:50% 50% 0 0;background:linear-gradient(to top,var(--coffee-light),transparent);opacity:0;transform-origin:bottom center}
+.wisp:nth-child(1){height:16px;animation:rise 2.4s ease-in-out 0s infinite}
+.wisp:nth-child(2){height:22px;animation:rise 2.4s ease-in-out .5s infinite}
+.wisp:nth-child(3){height:16px;animation:rise 2.4s ease-in-out 1s infinite}
+@keyframes rise{0%{opacity:0;transform:translateY(0) scaleX(1)}20%{opacity:.65}60%{opacity:.35;transform:translateY(-12px) scaleX(1.3)}100%{opacity:0;transform:translateY(-26px) scaleX(.8)}}
+.cup-body{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:38px;height:28px;background:linear-gradient(160deg,#c8914a 0%,var(--coffee) 60%,#3a2010 100%);border-radius:3px 3px 8px 8px;box-shadow:inset -3px 0 5px rgba(0,0,0,.2)}
+.cup-body::before{content:'';position:absolute;top:4px;left:4px;right:4px;height:4px;background:linear-gradient(90deg,#3a2010,#c8814a,#3a2010);border-radius:2px;opacity:.8}
+.cup-handle{position:absolute;right:0;bottom:15px;width:10px;height:12px;border:2px solid var(--coffee-light);border-left:none;border-radius:0 5px 5px 0}
+.cup-saucer{position:absolute;bottom:3px;left:50%;transform:translateX(-50%);width:48px;height:5px;background:linear-gradient(180deg,#c8914a,var(--coffee));border-radius:50%}
+.eyebrow{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.28em;text-transform:uppercase;color:var(--coffee-light);margin-bottom:10px}
+.header h1{font-family:'Playfair Display',serif;font-size:clamp(1.7rem,4vw,2.4rem);font-weight:400;color:var(--gold-pale);line-height:1.05;margin-bottom:8px}
+.header h1 em{font-style:italic;color:var(--gold)}
+.header-sub{font-family:'Lora',serif;font-size:.85rem;font-style:italic;color:var(--coffee-light);line-height:1.7}
+.header-rule{width:36px;height:1px;background:var(--coffee-light);opacity:.35;margin:16px auto 0}
+
+/* ── CARD ── */
+.card{background:var(--cream);border-radius:12px;padding:24px 28px;margin-bottom:12px;box-shadow:0 6px 40px rgba(22,4,45,.28)}
+.section-eyebrow{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.24em;text-transform:uppercase;color:var(--coffee-light);margin-bottom:4px}
+.section-title{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:400;color:var(--ink);margin-bottom:14px}
+.section-title em{font-style:italic;color:var(--rose-deep)}
+.field-label{font-family:'DM Mono',monospace;font-size:7.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--coffee-light);margin-bottom:5px;display:block}
+input[type="text"],textarea{font-family:'Lora',serif;font-size:.9rem;color:var(--ink);background:var(--white);border:1px solid var(--border);border-radius:4px;padding:10px 14px;width:100%;outline:none;transition:border-color .18s;line-height:1.5}
+input[type="text"]:focus,textarea:focus{border-color:var(--coffee-light)}
+input::placeholder,textarea::placeholder{color:var(--coffee-light);font-style:italic}
+textarea{resize:vertical}
+
+/* ── ENERGY CHIPS ── */
+.energy-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:0}
+.energy-chip{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.14em;text-transform:uppercase;padding:8px 14px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--coffee-light);cursor:pointer;transition:all .15s}
+.energy-chip:hover{border-color:var(--coffee-light);color:var(--coffee)}
+.energy-chip.on{background:var(--coffee);border-color:var(--coffee);color:var(--gold-pale)}
+
+/* ── TIMER DISPLAY ── */
+.timer-card{background:var(--navy);border-radius:12px;padding:28px;margin-bottom:12px;box-shadow:0 6px 40px rgba(22,4,45,.5);text-align:center;position:relative;overflow:hidden}
+.timer-card::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(201,152,74,.08) 0%,transparent 70%);pointer-events:none}
+.timer-phase{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.28em;text-transform:uppercase;color:var(--coffee-light);margin-bottom:8px}
+.timer-display{font-family:'Playfair Display',serif;font-size:clamp(3rem,10vw,5rem);color:var(--gold-pale);line-height:1;margin-bottom:6px;transition:color .3s}
+.timer-display.break-time{color:var(--rose-soft)}
+.timer-task{font-family:'Lora',serif;font-style:italic;font-size:.85rem;color:rgba(155,115,85,.6);margin-bottom:20px;min-height:1.3em}
+
+/* ── PROGRESS RING ── */
+.progress-wrap{position:relative;width:120px;height:120px;margin:0 auto 20px}
+.progress-wrap svg{transform:rotate(-90deg)}
+.progress-track{stroke:rgba(255,255,255,.06);fill:none}
+.progress-fill{fill:none;stroke:var(--gold);stroke-linecap:round;transition:stroke-dashoffset .8s linear, stroke .3s}
+.progress-fill.break-fill{stroke:var(--rose-mid)}
+.progress-inner{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column}
+.progress-cup{font-size:28px;line-height:1;transition:opacity .3s}
+.progress-interval{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.16em;color:var(--coffee-light);margin-top:3px}
+
+/* ── CUE OVERLAY ── */
+.cue-overlay{position:absolute;inset:0;background:rgba(22,4,45,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10;opacity:0;pointer-events:none;transition:opacity .4s}
+.cue-overlay.show{opacity:1;pointer-events:all}
+.cue-cup{font-size:52px;margin-bottom:12px;animation:gentleBob 1.8s ease-in-out infinite}
+@keyframes gentleBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.cue-title{font-family:'Playfair Display',serif;font-size:1.3rem;color:var(--gold-pale);margin-bottom:6px}
+.cue-sub{font-family:'Lora',serif;font-style:italic;font-size:.82rem;color:var(--coffee-light);margin-bottom:20px}
+.cue-btn{font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:.18em;text-transform:uppercase;padding:10px 22px;background:var(--coffee);color:var(--gold-pale);border:none;border-radius:4px;cursor:pointer;transition:background .18s}
+.cue-btn:hover{background:var(--navy-light)}
+
+/* ── INTERVAL DOTS ── */
+.intervals-row{display:flex;gap:8px;justify-content:center;margin-bottom:20px;flex-wrap:wrap}
+.interval-dot{width:32px;height:32px;border-radius:50%;border:1.5px solid rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font-size:13px;transition:all .3s;position:relative}
+.interval-dot.done{background:rgba(107,76,53,.3);border-color:var(--coffee)}
+.interval-dot.done::after{content:'☕';font-size:14px}
+.interval-dot.active{border-color:var(--gold);background:rgba(201,152,74,.1);animation:pulse 1.5s ease-in-out infinite}
+.interval-dot.active::after{content:'◦';color:var(--gold);font-size:18px}
+.interval-dot.empty::after{content:'·';color:rgba(255,255,255,.2);font-size:20px}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(201,152,74,.3)}50%{box-shadow:0 0 0 6px rgba(201,152,74,0)}}
+
+/* ── TIMER CONTROLS ── */
+.timer-controls{display:flex;gap:10px;justify-content:center}
+.btn-timer{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;padding:11px 22px;border-radius:4px;cursor:pointer;transition:all .18s;border:none}
+.btn-start{background:var(--coffee);color:var(--gold-pale)}
+.btn-start:hover{background:#8a6240}
+.btn-pause{background:rgba(255,255,255,.08);color:var(--gold-pale);border:1px solid rgba(255,255,255,.12)}
+.btn-pause:hover{background:rgba(255,255,255,.14)}
+.btn-reset{background:transparent;color:rgba(155,115,85,.5);border:1px solid rgba(155,115,85,.2);font-size:8px}
+.btn-reset:hover{color:var(--coffee-light);border-color:var(--coffee-light)}
+.btn-stop{background:transparent;color:rgba(148,78,99,.4);border:1px solid rgba(148,78,99,.2);font-size:8px}
+.btn-stop:hover{color:var(--rose-mid);border-color:var(--rose-mid)}
+
+/* ── COMPLETE ── */
+.complete-card{background:var(--navy);border-radius:12px;padding:32px 28px;margin-bottom:12px;text-align:center;box-shadow:0 6px 40px rgba(22,4,45,.5);display:none}
+.complete-card.show{display:block;animation:fadeUp .4s ease both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.complete-cup{font-size:44px;margin-bottom:12px}
+.complete-title{font-family:'Playfair Display',serif;font-size:1.5rem;color:var(--gold-pale);margin-bottom:6px}
+.complete-sub{font-family:'Lora',serif;font-style:italic;font-size:.85rem;color:var(--coffee-light);margin-bottom:22px;line-height:1.6}
+.complete-stats{display:flex;gap:12px;justify-content:center;margin-bottom:22px;flex-wrap:wrap}
+.stat-pill{background:rgba(255,255,255,.05);border:1px solid rgba(245,234,216,.12);border-radius:6px;padding:10px 16px;text-align:center}
+.stat-val{font-family:'Playfair Display',serif;font-size:1.3rem;color:var(--gold);display:block}
+.stat-label{font-family:'DM Mono',monospace;font-size:7.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--coffee-light);display:block;margin-top:2px}
+.note-area{width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(245,234,216,.15);border-radius:4px;padding:10px 14px;font-family:'Lora',serif;font-style:italic;font-size:.85rem;color:var(--gold-pale);outline:none;resize:none;margin-bottom:14px}
+.note-area::placeholder{color:rgba(155,115,85,.35)}
+.complete-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.btn-save{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;padding:11px 22px;background:var(--coffee);color:var(--gold-pale);border:none;border-radius:4px;cursor:pointer;transition:all .18s;display:inline-flex;align-items:center;gap:8px}
+.btn-save:hover{background:#8a6240}
+.btn-save:disabled{opacity:.5;cursor:not-allowed}
+.btn-new{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;padding:11px 22px;background:transparent;color:var(--gold-pale);border:1px solid rgba(245,234,216,.2);border-radius:4px;cursor:pointer;transition:all .18s}
+.btn-new:hover{border-color:var(--coffee-light)}
+.save-status{font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:.12em;padding:9px 13px;border-radius:4px;margin-top:10px;display:none;justify-content:center}
+.save-status.show{display:flex}
+.save-status.success{background:var(--success-bg);color:var(--success-color);border:1px solid var(--success-border)}
+.save-status.error{background:var(--error-bg);color:var(--error-color);border:1px solid var(--error-border)}
+
+/* ── SPINNER ── */
+.spinner-sm{width:12px;height:12px;border:2px solid rgba(245,234,216,.3);border-top-color:var(--gold-pale);border-radius:50%;animation:spin .7s linear infinite;display:none}
+.spinner-sm.show{display:block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(12px);background:var(--navy);color:var(--gold-pale);font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.14em;padding:9px 18px;border-radius:4px;opacity:0;transition:all .25s;pointer-events:none;z-index:99}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── FOOTER ── */
+.footer{text-align:center;margin-top:32px;font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.18em;text-transform:uppercase;color:var(--navy-faint)}
+.footer a{color:var(--coffee-light);text-decoration:none}
+
+/* ── STATES ── */
+.session-setup{display:block}
+.session-running{display:none}
+</style>
+</head>
+<body>
+
+
+
+<div class="app">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="cup-wrap">
+      <div class="steam"><div class="wisp"></div><div class="wisp"></div><div class="wisp"></div></div>
+      <div class="cup-body"></div><div class="cup-handle"></div><div class="cup-saucer"></div>
+    </div>
+    <p class="eyebrow">OT Session Timer</p>
+    <h1><em>One Cup</em></h1>
+    <p class="header-sub">One hour. One thing. Six steeps.</p>
+    <div class="header-rule"></div>
+  </header>
+
+  <!-- SESSION SETUP -->
+  <div id="sessionSetup">
+    <div class="card">
+      <p class="section-eyebrow">Before the pour</p>
+      <h2 class="section-title">What's <em>in the cup</em> today?</h2>
+      <div style="margin-bottom:16px;">
+        <label class="field-label">One focus task for this hour</label>
+        <input type="text" id="focusTask" placeholder="what you're working on right now…" />
+      </div>
+      <div>
+        <label class="field-label" style="margin-bottom:8px;">How's the cup looking?</label>
+        <div class="energy-row">
+          <button class="energy-chip" data-val="empty" onclick="selectEnergy(this)">empty cup</button>
+          <button class="energy-chip on" data-val="half" onclick="selectEnergy(this)">half a cup</button>
+          <button class="energy-chip" data-val="full" onclick="selectEnergy(this)">fresh pour</button>
+          <button class="energy-chip" data-val="unpredictable" onclick="selectEnergy(this)">can't predict</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="text-align:center;padding:20px 28px;">
+      <p style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.18em;text-transform:uppercase;color:var(--coffee-light);margin-bottom:4px;">session shape</p>
+      <p style="font-family:'Lora',serif;font-style:italic;font-size:.85rem;color:var(--coffee);line-height:1.6;" id="sessionShape">6 × 10 min work · 5 min breaks · ~1 hour total</p>
+      <div style="margin-top:16px;">
+        <button class="btn-timer btn-start" onclick="beginSession()" style="padding:13px 32px;font-size:9.5px;">start the steep →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TIMER -->
+  <div id="sessionRunning" style="display:none;">
+    <div class="timer-card">
+      <!-- CUE OVERLAY -->
+      <div class="cue-overlay" id="cueOverlay">
+        <div class="cue-cup">☕</div>
+        <h2 class="cue-title" id="cueTitle">Time for a break</h2>
+        <p class="cue-sub" id="cueSub">Step away. Breathe. The work will wait.</p>
+        <button class="cue-btn" id="cueBtn" onclick="dismissCue()">I'm back →</button>
+      </div>
+
+      <p class="timer-phase" id="timerPhase">work interval</p>
+      <p class="timer-task" id="timerTask"></p>
+
+      <div class="progress-wrap">
+        <svg width="120" height="120" viewBox="0 0 120 120">
+          <circle class="progress-track" cx="60" cy="60" r="52" stroke-width="4"/>
+          <circle class="progress-fill" id="progressFill" cx="60" cy="60" r="52" stroke-width="4"
+            stroke-dasharray="326.7" stroke-dashoffset="0"/>
+        </svg>
+        <div class="progress-inner">
+          <span class="progress-cup" id="progressCup">☕</span>
+          <span class="progress-interval" id="progressInterval">1 / 6</span>
+        </div>
+      </div>
+
+      <div class="timer-display" id="timerDisplay">10:00</div>
+
+      <div class="intervals-row" id="intervalsRow"></div>
+
+      <div class="timer-controls">
+        <button class="btn-timer btn-pause" id="pauseBtn" onclick="togglePause()">pause</button>
+        <button class="btn-timer btn-stop" onclick="stopEarly()">I need to stop</button>
+        <button class="btn-timer btn-reset" onclick="confirmReset()">start over</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPLETE -->
+  <div class="complete-card" id="completeCard">
+    <div class="complete-cup">☕</div>
+    <h2 class="complete-title">Session complete</h2>
+    <p class="complete-sub" id="completeSub">One full cup. That counts.</p>
+    <div class="complete-stats" id="completeStats"></div>
+    <label class="field-label" style="color:rgba(155,115,85,.6);text-align:left;display:block;margin-bottom:6px;">anything worth noting?</label>
+    <textarea class="note-area" id="sessionNote" rows="3" placeholder="how it felt, what came up, what helped…"></textarea>
+    <div class="complete-actions">
+      <button class="btn-save" id="saveBtn" onclick="showSummary()">
+        <div class="spinner-sm" id="saveSpinner"></div>
+        <span id="saveBtnLabel">show session summary →</span>
+      </button>
+      <button class="btn-new" onclick="newSession()">new session</button>
+    </div>
+    <div id="summaryBox" style="display:none;margin-top:14px;text-align:left;">
+      <p style="font-family:'DM Mono',monospace;font-size:7.5px;letter-spacing:.12em;color:rgba(155,115,85,.5);margin-bottom:6px;">select all and copy → paste into your session log</p>
+      <textarea id="summaryText" rows="7" style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(245,234,216,.2);border-radius:4px;padding:10px 14px;font-family:'DM Mono',monospace;font-size:11px;color:var(--gold-pale);line-height:1.7;resize:none;outline:none;" onclick="this.select();" readonly></textarea>
+    </div>
+  </div>
+
+  <p class="footer">One Cup · <a href="https://bottomcup.substack.com" target="_blank">Bottom of the Cup</a></p>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── CONFIG ──────────────────────────────────────────────────────
+const NOTION_PAGE_ID = '37c6e024-e1dd-8130-b17b-c8e2333c0ae3'; // Session Log page
+const WORK_DURATION  = 10 * 60; // 10 minutes
+const BREAK_DURATION = 5  * 60; // 5 minutes
+const TOTAL_INTERVALS = 6;
+
+// ── STATE ───────────────────────────────────────────────────────
+let energy = 'half';
+let focusTask = '';
+let currentInterval = 0; // 0-based
+let isBreak = false;
+let timeLeft = WORK_DURATION;
+let timerInterval = null;
+let isPaused = false;
+let sessionStartTime = null;
+let intervalsCompleted = 0;
+
+// ── ENERGY ──────────────────────────────────────────────────────
+function selectEnergy(btn){
+  document.querySelectorAll('.energy-chip').forEach(c => c.classList.remove('on'));
+  btn.classList.add('on');
+  energy = btn.dataset.val;
+}
+
+// ── BEGIN SESSION ────────────────────────────────────────────────
+function beginSession(){
+  focusTask = document.getElementById('focusTask').value.trim() || 'this hour';
+  currentInterval = 0;
+  isBreak = false;
+  timeLeft = WORK_DURATION;
+  isPaused = false;
+  intervalsCompleted = 0;
+  sessionStartTime = new Date();
+
+  document.getElementById('sessionSetup').style.display = 'none';
+  document.getElementById('sessionRunning').style.display = 'block';
+  document.getElementById('completeCard').classList.remove('show');
+  document.getElementById('timerTask').textContent = focusTask;
+
+  buildIntervalDots();
+  updateTimerDisplay();
+  updateProgress();
+  startTick();
+}
+
+// ── INTERVAL DOTS ────────────────────────────────────────────────
+function buildIntervalDots(){
+  const row = document.getElementById('intervalsRow');
+  row.innerHTML = '';
+  for(let i = 0; i < TOTAL_INTERVALS; i++){
+    const dot = document.createElement('div');
+    dot.className = 'interval-dot ' + (i === 0 ? 'active' : 'empty');
+    dot.id = 'dot-' + i;
+    row.appendChild(dot);
+  }
+}
+
+function updateDots(){
+  for(let i = 0; i < TOTAL_INTERVALS; i++){
+    const dot = document.getElementById('dot-' + i);
+    if(!dot) continue;
+    if(i < intervalsCompleted) dot.className = 'interval-dot done';
+    else if(i === currentInterval && !isBreak) dot.className = 'interval-dot active';
+    else dot.className = 'interval-dot empty';
+  }
+}
+
+// ── TIMER TICK ───────────────────────────────────────────────────
+function startTick(){
+  clearInterval(timerInterval);
+  timerInterval = setInterval(tick, 1000);
+}
+
+function tick(){
+  if(isPaused) return;
+  timeLeft--;
+  updateTimerDisplay();
+  updateProgress();
+
+  if(timeLeft <= 0){
+    if(!isBreak){
+      // work interval done
+      intervalsCompleted++;
+      updateDots();
+      if(intervalsCompleted >= TOTAL_INTERVALS){
+        // all done
+        showComplete(intervalsCompleted);
+        return;
+      }
+      // start break
+      isBreak = true;
+      timeLeft = BREAK_DURATION;
+      showCue('break');
+    } else {
+      // break done
+      isBreak = false;
+      currentInterval++;
+      timeLeft = WORK_DURATION;
+      updateDots();
+      showCue('work');
+    }
+  }
+}
+
+// ── DISPLAY ─────────────────────────────────────────────────────
+function updateTimerDisplay(){
+  const m = Math.floor(timeLeft / 60);
+  const s = timeLeft % 60;
+  document.getElementById('timerDisplay').textContent =
+    String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+  document.getElementById('timerDisplay').className = 'timer-display' + (isBreak ? ' break-time' : '');
+  document.getElementById('timerPhase').textContent = isBreak ? 'break time' : 'work interval';
+  document.getElementById('progressInterval').textContent = (intervalsCompleted + (isBreak?1:0)) + ' / ' + TOTAL_INTERVALS;
+  document.getElementById('progressCup').textContent = isBreak ? '🫖' : '☕';
+}
+
+function updateProgress(){
+  const total = isBreak ? BREAK_DURATION : WORK_DURATION;
+  const fraction = timeLeft / total;
+  const circumference = 326.7;
+  const offset = circumference * (1 - fraction);
+  const fill = document.getElementById('progressFill');
+  fill.style.strokeDashoffset = offset;
+  fill.className = 'progress-fill' + (isBreak ? ' break-fill' : '');
+}
+
+// ── PAUSE ────────────────────────────────────────────────────────
+function togglePause(){
+  isPaused = !isPaused;
+  document.getElementById('pauseBtn').textContent = isPaused ? 'resume' : 'pause';
+}
+
+// ── RESET ────────────────────────────────────────────────────────
+function confirmReset(){
+  if(confirm('Start the session over?')){
+    clearInterval(timerInterval);
+    document.getElementById('sessionRunning').style.display = 'none';
+    document.getElementById('sessionSetup').style.display = 'block';
+    document.getElementById('cueOverlay').classList.remove('show');
+  }
+}
+
+// ── CUE OVERLAY ──────────────────────────────────────────────────
+const breakMessages = [
+  ['Step away', 'The work is still there. So is the break.'],
+  ['Put the cup down', 'Five minutes of nothing is still something.'],
+  ['Breathe', 'The body kept its end of the deal. Now you keep yours.'],
+  ['Rest interval', 'Not a reward. Part of the work.'],
+];
+const workMessages = [
+  ['Back to it', 'One more steep. You\'re doing it.'],
+  ['Next interval', 'Same task. Pick up where you left.'],
+  ['Welcome back', 'Interval ' + (currentInterval + 1) + ' of ' + TOTAL_INTERVALS + '.'],
+];
+
+function showCue(type){
+  const overlay = document.getElementById('cueOverlay');
+  const title   = document.getElementById('cueTitle');
+  const sub     = document.getElementById('cueSub');
+  const btn     = document.getElementById('cueBtn');
+
+  if(type === 'break'){
+    const msg = breakMessages[Math.floor(Math.random() * breakMessages.length)];
+    title.textContent = msg[0];
+    sub.textContent   = msg[1];
+    btn.textContent   = 'got it →';
+    startTick(); // keep break timer ticking behind overlay
+  } else {
+    const num = intervalsCompleted + 1;
+    title.textContent = 'Interval ' + num + ' of ' + TOTAL_INTERVALS;
+    sub.textContent   = 'Ready when you are.';
+    btn.textContent   = 'start interval →';
+    isPaused = true; // pause until they dismiss
+  }
+  overlay.classList.add('show');
+}
+
+function dismissCue(){
+  document.getElementById('cueOverlay').classList.remove('show');
+  if(!isBreak){ isPaused = false; }
+  updateTimerDisplay();
+}
+
+// ── COMPLETE ─────────────────────────────────────────────────────
+function showComplete(intervalsCount){
+  clearInterval(timerInterval);
+  document.getElementById('sessionRunning').style.display = 'none';
+  const card = document.getElementById('completeCard');
+  card.classList.add('show');
+
+  const full = intervalsCount >= TOTAL_INTERVALS;
+  const energyLabels = {empty:'empty cup',half:'half a cup',full:'fresh pour',unpredictable:'unpredictable'};
+  const fullSubs = {
+    empty:'You did it on an empty cup. That\'s not nothing.',
+    half:'Half a cup, full session. That\'s the whole job.',
+    full:'Fresh pour and a full hour. Well steeped.',
+    unpredictable:'Made it through. The body showed up anyway.'
+  };
+  const partialSubs = {
+    1:'One interval is one more than zero.',
+    2:'Two steeps. The body said what it needed to.',
+    3:'Halfway. That\'s real work.',
+    4:'Four intervals. More than enough.',
+    5:'Five out of six. The cup did its job.'
+  };
+  document.getElementById('completeSub').textContent = full
+    ? (fullSubs[energy] || fullSubs.half)
+    : (partialSubs[intervalsCount] || 'You stopped when the body asked. That\'s the right call.');
+
+  const mins = intervalsCount * 10;
+  document.getElementById('completeStats').innerHTML = `
+    <div class="stat-pill"><span class="stat-val">${intervalsCount} / ${TOTAL_INTERVALS}</span><span class="stat-label">intervals</span></div>
+    <div class="stat-pill"><span class="stat-val">${mins}</span><span class="stat-label">min worked</span></div>
+    <div class="stat-pill"><span class="stat-val">${energyLabels[energy]||energy}</span><span class="stat-label">energy</span></div>
+  `;
+}
+
+// ── STOP EARLY ───────────────────────────────────────────────────
+function stopEarly(){
+  clearInterval(timerInterval);
+  document.getElementById('cueOverlay').classList.remove('show');
+  showComplete(intervalsCompleted);
+}
+
+// ── SHOW SESSION SUMMARY ─────────────────────────────────────────
+function showSummary(){
+  const note = document.getElementById('sessionNote').value.trim();
+  const dateStr = sessionStartTime ? sessionStartTime.toLocaleDateString('en-CA') : new Date().toLocaleDateString('en-CA');
+  const timeStr = sessionStartTime ? sessionStartTime.toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit'}) : '';
+  const energyLabels = {empty:'empty cup',half:'half a cup',full:'fresh pour',unpredictable:'unpredictable'};
+
+  const lines = [
+    `Session — ${dateStr}`,
+    ``,
+    `Date: ${dateStr} at ${timeStr}`,
+    `Focus: ${focusTask || 'this hour'}`,
+    `Energy: ${energyLabels[energy]||energy}`,
+    `Intervals completed: ${intervalsCompleted} of ${TOTAL_INTERVALS}`,
+    `Time worked: ${intervalsCompleted * 10} min`,
+    note ? `Notes: ${note}` : null
+  ].filter(l => l !== null).join('\n');
+
+  const box = document.getElementById('summaryBox');
+  const text = document.getElementById('summaryText');
+  text.value = lines;
+  box.style.display = 'block';
+  text.select();
+  document.getElementById('saveBtnLabel').textContent = 'summary ready ✓';
+  document.getElementById('saveBtn').disabled = true;
+}
+
+function showSaveStatus(type, msg){
+  const el = document.getElementById('saveStatus');
+  el.className = 'save-status show ' + type;
+  el.textContent = msg;
+}
+
+// ── NEW SESSION ──────────────────────────────────────────────────
+function newSession(){
+  clearInterval(timerInterval);
+  document.getElementById('completeCard').classList.remove('show');
+  document.getElementById('sessionSetup').style.display = 'block';
+  document.getElementById('focusTask').value = '';
+  document.getElementById('sessionNote').value = '';
+  document.getElementById('summaryBox').style.display = 'none';
+  document.getElementById('summaryText').value = '';
+  document.getElementById('saveBtnLabel').textContent = 'show session summary →';
+  document.getElementById('saveBtn').disabled = false;
+  currentInterval = 0; isBreak = false; timeLeft = WORK_DURATION;
+  isPaused = false; intervalsCompleted = 0;
+}
+
+// ── TOAST ────────────────────────────────────────────────────────
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+</script>
+</body>
+</html>
