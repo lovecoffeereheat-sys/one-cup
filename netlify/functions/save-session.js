@@ -14,7 +14,7 @@ export default async (req) => {
   }
 
   const NOTION_KEY = process.env.NOTION_API_KEY;
-  const NOTION_PAGE_ID = '37c6e024-e1dd-8130-b17b-c8e2333c0ae3';
+  const NOTION_PAGE_ID = '65089dd5-fd2d-4a4d-8d69-af2c2c5af186';
 
   if (!NOTION_KEY) {
     return new Response(JSON.stringify({ error: 'Notion key not configured' }), { status: 500, headers });
