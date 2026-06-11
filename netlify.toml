@@ -10,3 +10,7 @@
   [headers.values]
     X-Frame-Options = "ALLOWALL"
     Content-Security-Policy = "frame-ancestors *"
+[[redirects]]
+  from = "/api/save-session"
+  to = "/.netlify/functions/save-session"
+  status = 200
