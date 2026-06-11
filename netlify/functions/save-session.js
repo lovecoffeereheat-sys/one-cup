@@ -1,4 +1,5 @@
-export default async (req) => {
+exports.handler = async (event) => {
+  const req = { method: event.httpMethod, json: () => JSON.parse(event.body) };
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
