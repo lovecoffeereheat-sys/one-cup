@@ -50,7 +50,6 @@ exports.handler = async (event) => {
   }
 
   try {
-    const fetch = require('node-fetch');
     const res = await fetch('https://api.notion.com/v1/pages', {
       method: 'POST',
       headers: {
