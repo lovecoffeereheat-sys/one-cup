@@ -42,7 +42,7 @@ export default async (req) => {
     'Energy': { select: { name: energyLabels[energy] || energy } },
     'Intervals': { select: { name: `${intervalsCompleted} / ${totalIntervals}` } },
     'Time Worked': { number: intervalsCompleted * 10 },
-    'date:Date:start': dateStr,
+    const properties = {     'Session': { title: [{ type: 'text', text: { content: `Session — ${dateStr}` } }] },     'Focus': { rich_text: [{ type: 'text', text: { content: focusTask || 'this hour' } }] },     'Energy': { select: { name: energyLabels[energy] || energy } },     'Intervals': { select: { name: `${intervalsCompleted} / ${totalIntervals}` } },     'Time Worked': { number: intervalsCompleted * 10 },     'Date': { date: { start: dateStr } }, };
   };
 
   if (note) {
