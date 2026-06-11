@@ -37,7 +37,7 @@ export default async (req) => {
   };
 
   const properties = {
-    'Session': { title: [{ text: { content: `Session — ${dateStr}` } }] },
+    'Session': { title: [{ type: 'text', text: { content: `Session — ${dateStr}` } }] },
     'Focus': { rich_text: [{ text: { content: focusTask || 'this hour' } }] },
     'Energy': { select: { name: energyLabels[energy] || energy } },
     'Intervals': { select: { name: `${intervalsCompleted} / ${totalIntervals}` } },
