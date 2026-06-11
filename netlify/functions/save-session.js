@@ -1,31 +1,30 @@
 exports.handler = async (event) => {
-  const req = { method: event.httpMethod, json: () => JSON.parse(event.body) };
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Content-Type': 'application/json',
   };
 
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers });
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 204, headers, body: '' };
   }
 
-  if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers });
+  if (event.httpMethod !== 'POST') {
+    return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
 
   const NOTION_KEY = process.env.NOTION_API_KEY;
   const DATABASE_ID = '65089dd5-fd2d-4a4d-8d69-af2c2c5af186';
 
   if (!NOTION_KEY) {
-    return new Response(JSON.stringify({ error: 'Notion key not configured' }), { status: 500, headers });
+    return { statusCode: 500, headers, body: JSON.stringify({ error: 'Notion key not configured' }) };
   }
 
   let body;
   try {
-    body = await req.json();
+    body = JSON.parse(event.body);
   } catch {
-    return new Response(JSON.stringify({ error: 'Invalid request body' }), { status: 400, headers });
+    return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid request body' }) };
   }
 
   const { dateStr, timeStr, focusTask, energy, intervalsCompleted, totalIntervals, note } = body;
@@ -39,18 +38,19 @@ exports.handler = async (event) => {
 
   const properties = {
     'Session': { title: [{ type: 'text', text: { content: `Session — ${dateStr}` } }] },
-    'Focus': { rich_text: [{ text: { content: focusTask || 'this hour' } }] },
+    'Focus': { rich_text: [{ type: 'text', text: { content: focusTask || 'this hour' } }] },
     'Energy': { select: { name: energyLabels[energy] || energy } },
     'Intervals': { select: { name: `${intervalsCompleted} / ${totalIntervals}` } },
     'Time Worked': { number: intervalsCompleted * 10 },
-    const properties = {     'Session': { title: [{ type: 'text', text: { content: `Session — ${dateStr}` } }] },     'Focus': { rich_text: [{ type: 'text', text: { content: focusTask || 'this hour' } }] },     'Energy': { select: { name: energyLabels[energy] || energy } },     'Intervals': { select: { name: `${intervalsCompleted} / ${totalIntervals}` } },     'Time Worked': { number: intervalsCompleted * 10 },     'Date': { date: { start: dateStr } }, };
+    'Date': { date: { start: dateStr } },
   };
 
   if (note) {
-    properties['Notes'] = { rich_text: [{ text: { content: note } }] };
+    properties['Notes'] = { rich_text: [{ type: 'text', text: { content: note } }] };
   }
 
   try {
+    const fetch = require('node-fetch');
     const res = await fetch('https://api.notion.com/v1/pages', {
       method: 'POST',
       headers: {
@@ -66,14 +66,13 @@ exports.handler = async (event) => {
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      return new Response(JSON.stringify({ error: err.message || 'Notion error ' + res.status }), { status: 502, headers });
+      return { statusCode: 502, headers, body: JSON.stringify({ error: err.message || 'Notion error ' + res.status }) };
     }
 
-    return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
+    return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
 
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers });
+    return { statusCode: 500, headers, body: JSON.stringify({ error: err.message }) };
   }
 };
-
 
